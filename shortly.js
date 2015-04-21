@@ -121,10 +121,10 @@ app.post('/login', function(req, res) {
    var username = req.body.username;
    var password = req.body.password;
   
-  new User({username: username, password: password})
+  new User({username: username})
     .fetch()
     .then(function(model) {
-      if (model) {
+      if (model && model.verify(password)) {
         req.session.name = model.get('username');
         // console.log(model.get('username'));
         res.redirect('/');

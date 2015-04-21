@@ -7,9 +7,10 @@ var User = db.Model.extend({
 
   // initialize: function(){
   //   this.on('creating', function(model, attrs, options){
-  //     var shasum = crypto.createHash('sha1');
-  //     shasum.update(model.get('url'));
-  //     model.set('code', shasum.digest('hex').slice(0, 5));
+  //     var salt = bcrypt.genSalt(10);
+  //     var hash = bcrypypt.hash(model.get('password', salt));
+  //     console.log(hash); 
+  //     model.set('hashedPW', hash);
   //   });
   // }
 });

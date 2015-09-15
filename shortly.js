@@ -18,8 +18,6 @@ var app = express();
 app.set('views', __dirname + '/views');
 app.set('view engine', 'ejs');
 
-app.use(session({secret: 'topsecret'}));
-
 app.use(partials());
 // Parse JSON (uniform resource locators)
 app.use(bodyParser.json());
@@ -27,28 +25,31 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
 
+// enable sessions
+app.use(session({
+  secret: 'shhh, it\'s a secret',
+  resave: false,
+  saveUninitialized: true
+}));
 
-app.get('/', 
+app.get('/', util.checkUser,
 function(req, res) {
-  loggedInChecker(req.session, res);
   res.render('index');
 });
 
-app.get('/create', 
+app.get('/create', util.checkUser,
 function(req, res) {
-  loggedInChecker(req.session, res);
   res.render('index');
 });
 
-app.get('/links', 
+app.get('/links', util.checkUser,
 function(req, res) {
-  loggedInChecker(req.session, res);
   Links.reset().fetch().then(function(links) {
     res.send(200, links.models);
   });
 });
 
-app.post('/links', 
+app.post('/links', util.checkUser,
 function(req, res) {
   var uri = req.body.url;
 
@@ -94,57 +95,38 @@ app.get('/signup', function(req, res) {
 });
 
 app.post('/signup', function(req, res) {
-   var username = req.body.username;
-   var password = req.body.password;
+  var username = req.body.username;
+  var password = req.body.password;
 
-  new User({ username: username }).fetch().then(function(found) {
-    if (found) {
-      res.redirect('/signup');
-      res.send(200);
-    } else {
-
-        var user = new User({
-          username: username,
-          password: password
-        });
-
-        user.save().then(function(newUser) {
-          Users.add(newUser);
-          res.redirect('/');
-          res.send(200, newUser.get('username'));
-        });
-      }
+  new User({username: username}).fetch().then(function(found) {
+    found ? res.redirect('/login') :
+    new User({username: username, password: password})
+    .save()
+    .then(function(newUser) {
+      Users.add(newUser);
+      util.createSession(newUser, req, res);
+    });
   });
 });
 
 app.post('/login', function(req, res) {
    var username = req.body.username;
-   var password = req.body.password;
+   var attempt = req.body.password;
   
   new User({username: username})
     .fetch()
-    .then(function(model) {
-      if (model && model.verify(password)) {
-        req.session.name = model.get('username');
-        // console.log(model.get('username'));
-        res.redirect('/');
-      }
+    .then(function(user) {
+      !user ? res.redirect ('/login') :
+        user.checkPassword (attempt, function (match) {
+          match ? util.createSession (user, req, res) : res.redirect ('/login');
+        });
     }); 
-   // this is where we left off
-  // console.log('DB QUERY: ' + db.knex.select().from('users'));
 });
 
-var loggedInChecker = function(session, res){
-  if (!session.name){
-    res.redirect('/login');
-  }
-};
-
-app.get('/logout', function(req, res){
-  req.session.destroy(function(err){
-    res.redirect('/login');
-  });
+app.get ('/logout', function (req, res) {
+  util.destroySession (req, res);
 });
+
 /************************************************************/
 // Handle the wildcard route last - if all other routes fail
 // assume the route is a short code and try and handle it here.

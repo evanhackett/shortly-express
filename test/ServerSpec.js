@@ -18,6 +18,7 @@ var xbeforeEach = function(){};
 
 
 describe('', function() {
+  this.timeout(4000);
 
   beforeEach(function() {
     // log out currently signed in user
